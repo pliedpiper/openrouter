@@ -41,6 +41,12 @@ You will be prompted to:
 
 Type `exit`/`quit` at any prompt (or press `Ctrl+D`) to leave the app.
 
+## Persistent Scoring
+
+- The CLI asks for a player name on startup and stores round results in `scores.db` (SQLite).
+- After each round you see your lifetime accuracy plus a multi-player leaderboard.
+- Delete `scores.db` or pick a new player name if you want a clean slate.
+
 ## Customizing Models
 
 The `MODELS` list in `main.py` controls which providers are queried. To swap models:
@@ -59,5 +65,5 @@ pytest
 ## Troubleshooting
 
 - **Missing API key**: Verify `.env` contains `openRouter=<key>` with no quotes.
-- **Model errors**: Some providers rate-limit or require allowlisting—double-check your OpenRouter dashboard.
+- **Model errors**: Some providers rate-limit or require allowlisting -- double-check your OpenRouter dashboard.
 - **Network issues**: The script retries per run; simply re-run the round or swap to available models.

@@ -4,6 +4,8 @@ from pathlib import Path
 
 from openai import OpenAI
 
+from scoreboard import ScoreStore
+
 
 SYSTEM_PROMPT = "You are a helpful CLI assistant. Keep answers concise unless asked otherwise."
 MODELS = [
@@ -70,6 +72,46 @@ def prompt_for_guess(valid_selections: dict[str, str], response_number: int) -> 
         print(f"Unknown choice. Pick one of: {', '.join(sorted(valid_selections))}")
 
 
+def prompt_for_player_name() -> str:
+    while True:
+        player = input("Enter a player name: ").strip()
+        if player.lower() in {"exit", "quit"}:
+            raise KeyboardInterrupt
+        if player:
+            return player
+        print("Player name cannot be blank.")
+
+
+def render_summary(store: ScoreStore, player_name: str) -> None:
+    summary = store.get_player_summary(player_name)
+    if not summary:
+        print(f"Welcome, {player_name}! New scores start now.\n")
+        return
+
+    accuracy = summary.accuracy * 100
+    print(
+        f"Welcome back, {player_name}! "
+        f"{summary.total_correct}/{summary.total_questions} correct "
+        f"over {summary.rounds_played} rounds ({accuracy:.1f}% accuracy).\n"
+    )
+
+
+def show_leaderboard(store: ScoreStore) -> None:
+    leaders = store.leaderboard()
+    if not leaders:
+        return
+
+    print("Leaderboard:")
+    for idx, entry in enumerate(leaders, start=1):
+        accuracy = entry.accuracy * 100
+        print(
+            f"{idx}. {entry.player} "
+            f"- {entry.total_correct}/{entry.total_questions} "
+            f"across {entry.rounds_played} rounds ({accuracy:.1f}%)"
+        )
+    print()
+
+
 def main() -> None:
     api_key = load_env_value("openRouter")
     if not api_key:
@@ -82,8 +124,18 @@ def main() -> None:
         api_key=api_key,
     )
 
+    store = ScoreStore()
+
     print("OpenRouter Multi-Model Guessing Game")
     print("Type 'exit' or press Ctrl+D to quit.\n")
+
+    try:
+        player_name = prompt_for_player_name()
+    except KeyboardInterrupt:
+        print("\nGoodbye!")
+        return
+
+    render_summary(store, player_name)
 
     while True:
         try:
@@ -138,6 +190,19 @@ def main() -> None:
             print("Perfect round!")
         else:
             print(f"You matched {correct_total}/{len(shuffled)} correctly.")
+
+        store.record_round(player_name, len(shuffled), correct_total)
+        summary = store.get_player_summary(player_name)
+        if summary:
+            accuracy = summary.accuracy * 100
+            print(
+                f"\nLifetime totals for {player_name}: "
+                f"{summary.total_correct}/{summary.total_questions} "
+                f"over {summary.rounds_played} rounds ({accuracy:.1f}%)."
+            )
+
+        print()
+        show_leaderboard(store)
 
         play_again = input("\nPlay another round? (y/n): ").strip().lower()
         if play_again not in {"y", "yes"}:
